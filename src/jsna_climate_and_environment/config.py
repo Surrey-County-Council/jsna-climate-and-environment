@@ -1,6 +1,21 @@
+import os
 import re
 from pathlib import Path
 from loguru import logger
+from dotenv import load_dotenv
+
+
+def get_env_path(env_var: str, default: Path) -> Path:
+    load_dotenv()
+    try:
+        path = Path(os.environ[env_var])
+    except KeyError:
+        path = default
+    if not path.exists():
+        logger.info(f"creating directory for '{env_var}': {path}")
+        path.mkdir(parents=True)
+    return path
+
 
 PROJECT_NAME = "jsna-climate-and-environment"
 # note the convention of hyphens for project and underscores for modules helps get a consistent root
@@ -22,8 +37,9 @@ if not MODULE_DIR.exists():
 
 logger.info(f"ROOT_DIR: {ROOT_DIR}")
 
+# make a home for all data inputs associated with the project
+DATA_DIR = get_env_path("DATA_DIR", ROOT_DIR / "data" / "input")
+
 # make a home for all data outputs associated with the project
-DATA_DIR = ROOT_DIR / "data"
-if not DATA_DIR.exists():
-    logger.info(f"data not found. creating datastore: {DATA_DIR}")
-    DATA_DIR.mkdir()
+OUTPUT_DIR = get_env_path("OUTPUT_PATH", ROOT_DIR / "data" / "output")
+OUTPUT_DIR.mkdir(exist_ok=True, parents=True)

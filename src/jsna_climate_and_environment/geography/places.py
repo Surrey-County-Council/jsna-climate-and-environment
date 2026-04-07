@@ -1,6 +1,6 @@
 import warnings
 from typing import Literal
-from jsna_climate_and_environment.config import DATA_DIR
+from jsna_climate_and_environment.config import OUTPUT_DIR
 import shutil
 import tempfile
 from os import PathLike
@@ -8,7 +8,7 @@ from pathlib import Path
 import functools
 from jsna_climate_and_environment.geography.esri_api import (
     read_boundary_dataset,
-    read_csv_dataset,
+    read_csv_lookup,
 )
 import geopandas as gpd
 import polars as pl
@@ -94,7 +94,7 @@ def get_nspl(
     ] = "National_Statistics_Postcode_Lookup_(February_2026)_for_the_UK_(Hosted_Table)",
 ) -> pl.DataFrame:
     return (
-        read_csv_dataset(dataset)
+        read_csv_lookup(dataset)
         .select(
             country_code="ctry25cd",
             region_code="rgn25cd",
@@ -195,10 +195,10 @@ def setup_geodb(overwrite: bool = False) -> Path:
     if true will overwrite the geodatabase by downloading fresh data
 
     if false will read data that already exists or download data if it doesn't exist"""
-    output_path = DATA_DIR / "places.gdb.zip"
+    output_path = OUTPUT_DIR / "places.gdb.zip"
     if overwrite or (not output_path.exists()):
         write_tableau_gdb(
-            DATA_DIR,
+            OUTPUT_DIR,
             "places",
             linking=gpd.GeoDataFrame(get_nspl().to_pandas()),
             lsoa=get_surrey_lsoas(),

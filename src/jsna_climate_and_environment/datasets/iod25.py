@@ -1,3 +1,6 @@
+from pathlib import Path
+from jsna_climate_and_environment.config import OUTPUT_DIR
+from jsna_climate_and_environment.geography.places import read_gdb
 import polars as pl
 import polars.selectors as cs
 from fastexcel import read_excel
@@ -135,3 +138,22 @@ def get_imd_domains(
             decile="decile",
         )
     )
+
+
+def get_data(
+    output_file: Path = OUTPUT_DIR / "iod.csv", overwrite: bool = False
+) -> pl.DataFrame:
+    if output_file.exists() and not overwrite:
+        return pl.read_csv(output_file)
+
+    link_df = pl.from_pandas(read_gdb("linking"))
+    surrey_df = get_imd_domains().filter(
+        pl.col("lsoa21cd").is_in(link_df["lsoa21_code"].to_list())
+    )
+    surrey_df.write_csv(output_file)
+    return surrey_df
+
+
+if __name__ == "__main__":
+    df = get_data(overwrite=True)
+    print(df)

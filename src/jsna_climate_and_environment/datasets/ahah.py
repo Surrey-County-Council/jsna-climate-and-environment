@@ -37,14 +37,6 @@ class AhahMetadata(Metadata):
 
 RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
     AhahMetadata(
-        measure_name="overall_index",
-        name_at_source="ahah",
-        indicator_name="overall_access",
-        description="Scored by combining all domains - lower score = healthier",
-        rationalle="This value aggregates all inputs. It is an indication of the health of the built environment overall",
-        caveats=None,
-    ),
-    AhahMetadata(
         measure_name="health_domain",
         name_at_source="gp",
         description="Scored by drive time in minutes - shorter drive time = healthier",
@@ -137,6 +129,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "It is primarily associated with burning fossil fuels (vehicles, power plants). "
             "It causes respiratory issues, including airway inflammation and asthma, and contributes to smog, acid rain, and ozone formation."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="air_quality_domain",
@@ -148,6 +141,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "It is primarily associated with construction, agriculture, and vehicle emissions. "
             "These particles penetrate the throat and lungs, causing respiratory issues, asthma, and cardiovascular strain."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="air_quality_domain",
@@ -159,6 +153,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "Sulfur dioxide is a toxic gas that causes acid rain. It is primarily associated with industrial polutants. "
             "It has a pungent odor and causes respitory issues."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="greenspace_bluespace_domain",
@@ -170,6 +165,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "This means grey (urban), blue (water) or white (snow) areas will have low scores and the measure can be impacted by cloud cover. "
             "NDVI has strong associacions with improved physical activity, healthy birth weight and low mortality."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="overall_index",
@@ -181,6 +177,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "A holistic view is useful for identifying areas that are most at risk when considering all domains. "
             "It might be used alongside the indicies of deprivation to identify priority populations based on an alternative metric than deprivation."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="health_domain",
@@ -192,6 +189,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "The measure of access for all underlying indicators is drive time in minutes to the closest health site of it's kind. "
             "It should be seen as a measure of convenience rather than density."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="greenspace_bluespace",
@@ -203,6 +201,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "The measure of access for underlying indicators includes both drive time and overall green-ness. "
             "It balances the density of greenspace against public access and bluespace."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="air_quality_domain",
@@ -214,6 +213,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "The measure of access for all underlying indicators is concentration. "
             "It can identify hotspots where different air quality hazards intersect."
         ),
+        caveats=None,
     ),
     AhahMetadata(
         measure_name="retail_domain",
@@ -225,6 +225,7 @@ RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
             "The measure of access for all underlying indicators is drive time in minutes to the closest retail hazard. "
             "It should be seen as a measure of convenience rather than density."
         ),
+        caveats=None,
     ),
 )
 

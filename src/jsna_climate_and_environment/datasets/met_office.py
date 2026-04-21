@@ -205,7 +205,6 @@ def transform_data(df: pl.DataFrame) -> pl.DataFrame:
         order_by=degrees_above_baseline,
         descending=False,
     )
-
     df = (
         df.drop("objectid", "name", "category", "shape__area", "shape__length")
         .unpivot(index="code")
@@ -385,7 +384,7 @@ def get_climate_projections(
 ) -> pl.DataFrame:
     """utility function returns the data. If the data exists locally, this is used.
 
-    to overwrite data ise the write_data function"""
+    to overwrite data ise the refresh_data function"""
     if cache is None or not cache.exists():
         logger.info("Downloading Data for climate projections...")
         return anyio.run(_get_climate_projections)
@@ -397,6 +396,7 @@ def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
     meta_dir = output_dir / "metadata"
     if not meta_dir.exists():
         logger.info(f"Creating local storen for data at: {output_dir}...")
+        meta_dir.mkdir(parents=True)
 
     surrey_df = get_climate_projections(cache=None)
     meta_df = get_metadata()

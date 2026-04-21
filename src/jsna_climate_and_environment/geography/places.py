@@ -13,7 +13,9 @@ from jsna_climate_and_environment.geography.esri_api import (
 import geopandas as gpd
 import polars as pl
 
-BRITISH_NATIONAL_GRID = "EPSG:27700"
+
+BRITISH_NATIONAL_GRID_SRID = 27700
+BRITISH_NATIONAL_GRID = f"EPSG:{BRITISH_NATIONAL_GRID_SRID}"
 SURREY_COUNTY_CODE = "E10000030"
 
 SURREY_EAST = (

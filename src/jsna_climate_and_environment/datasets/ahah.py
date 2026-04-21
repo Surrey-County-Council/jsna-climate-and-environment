@@ -1,9 +1,166 @@
+"""Access to the data requires registration. go to https://apps.cdrc.ac.uk/datasetportal/Identity/Account/Register
+
+Once registered generate an API key and save it as an env variable 'CDRC_API_KEY'
+
+"""
+
+from pydantic import Field
+
+from typing import Literal
+
+from jsna_climate_and_environment.datasets.data_model import Metadata
 from jsna_climate_and_environment.geography.places import read_gdb
 from polars.dataframe.frame import DataFrame
 from polars.expr.expr import Expr
 from pathlib import Path
 import polars as pl
 from jsna_climate_and_environment.config import DATA_DIR, OUTPUT_DIR
+from loguru import logger
+
+
+class AhahMetadata(Metadata):
+    source: Literal[
+        "https://data.geods.ac.uk/dataset/8fa47a8b-345c-438d-a8c3-0ac758ee12be/resource/db102d9c-1515-43c4-910e-9700d13fed24/download/ahah_v5.csv"
+    ] = "https://data.geods.ac.uk/dataset/8fa47a8b-345c-438d-a8c3-0ac758ee12be/resource/db102d9c-1515-43c4-910e-9700d13fed24/download/ahah_v5.csv"
+    dataset: Literal["ahah_v5"] = "ahah_v5"
+    indicator_name: str = Field(
+        default_factory=lambda data: f"access_to_{data['name_at_source']}"
+    )
+    caveats: str | None = (
+        "Where drive time is measured from the center of a postcode this assumes access to a private vehicle. "
+        "A postcode typically contains around 15 addresses, though they can contain up to 100. Population standardisation has not been completed. "
+        "Drive times from a postcode center to its edge vary significantly based on urban density, "
+        "typically ranging from 2-5 minutes in cities to over 15-20 minutes in rural areas. "
+        "For greenspace/bluespace in particular, the access to nature dashboard provides a more robust measure."
+    )
+
+
+RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
+    AhahMetadata(
+        measure_name="overall_index",
+        name_at_source="ahah",
+        indicator_name="overall_access",
+        description="Scored by combining all domains - lower score = healthier",
+        rationalle="This value aggregates all inputs. It is an indication of the health of the built environment overall",
+        caveats=None,
+    ),
+    AhahMetadata(
+        measure_name="health_domain",
+        name_at_source="gp",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest gp surgery",
+    ),
+    AhahMetadata(
+        measure_name="greenspace_bluespace_domain",
+        name_at_source="bluespace",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest bluespace",
+    ),
+    AhahMetadata(
+        measure_name="health_domain",
+        name_at_source="dentist",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest dentist",
+    ),
+    AhahMetadata(
+        measure_name="retail_domain",
+        name_at_source="fast_food",
+        description="Scored by drive time in minutes - longer drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest fast food outlet",
+    ),
+    AhahMetadata(
+        measure_name="retail_domain",
+        name_at_source="gambling",
+        description="Scored by drive time in minutes - longer drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest gambling outlet",
+    ),
+    AhahMetadata(
+        measure_name="greenspace_bluespace_domain",
+        name_at_source="greenspace_active",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle=(
+            "The average travel time from each postcode centroid in this area to the closest accessible greenspace. "
+            "(accessible greenspace is defined by ordinance survey and includes parks, "
+            "playing fields, sports facilities and other publically accessible greenspace.)"
+        ),
+    ),
+    AhahMetadata(
+        measure_name="health_domain",
+        name_at_source="hospital",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle=(
+            "The average travel time from each postcode centroid in this area to the closest hospital. "
+            "(Hospitals are any NHS trust site and do not necessarily include an A&E. These sites may be specialist units.)"
+        ),
+    ),
+    AhahMetadata(
+        measure_name="health_domain",
+        name_at_source="leisure",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle="The average travel time from each postcode centroid in this area to the closest sports and fitness facility.",
+    ),
+    AhahMetadata(
+        measure_name="health_domain",
+        name_at_source="pharmacy",
+        description="Scored by drive time in minutes - shorter drive time = healthier",
+        rationalle=(
+            "The average travel time from each postcode centroid in this area to the closest pharmacy. "
+            "This may produce different results from the authoritative Pharmaceutical Needs Assessments completed by each Local Authority."
+        ),
+    ),
+    AhahMetadata(
+        measure_name="retail_domain",
+        name_at_source="pub_bar",
+        description="Scored by drive time in minutes - longer drive time = healthier",
+        rationalle=(
+            "The average travel time from each postcode centroid in this area to the closest pub or bar. "
+            "This includes lisenced premises such as resteraunts or cafe's only when these premices are legally permitted to sell alcohol. "
+            "Do not drink and drive!"
+        ),
+    ),
+    AhahMetadata(
+        measure_name="retail_domain",
+        name_at_source="tobacco",
+        description="Scored by drive time in minutes - longer drive time = healthier",
+        rationalle=(
+            "The average travel time from each postcode centroid in this area to the closest outlet selling tobacco or vape products. "
+            "(This includes any outlets which sell tobacco products such as supermarkets, off-licences and vape shops.)"
+        ),
+    ),
+    AhahMetadata(
+        measure_name="air_quality_domain",
+        name_at_source="no2",
+        indicator_name="exposure to smog",
+        description="Scored by average concentration - lower concentration = healthier",
+        rationalle=(
+            "The average average concentration of nitrogen dioxide in this area. "
+            "Nitrogen Dioxide is mainly produced by burning fossil fuels (vehicles, power plants). "
+            "It causes respiratory issues, including airway inflammation and asthma, and contributes to smog, acid rain, and ozone formation."
+        ),
+    ),
+    AhahMetadata(
+        measure_name="air_quality_domain",
+        name_at_source="pm10",
+        indicator_name="exposure to dust",
+        description="Scored by average concentration - lower concentration = healthier",
+        rationalle=(
+            "The average average concentration of coarse particulate matter (pm10) in this area. "
+            "This includes dust, construction, agriculture, and vehicle emissions. "
+            "These particles penetrate the throat and lungs, causing respiratory issues, asthma, and cardiovascular strain."
+        ),
+    ),
+    AhahMetadata(
+        measure_name="air_quality_domain",
+        name_at_source="so2",
+        indicator_name="exposure to coarse particulate matter",
+        description="Scored by average concentration - lower concentration = healthier",
+        rationalle=(
+            "The average average concentration of coarse particulate matter (pm10) in this area. "
+            "This includes dust, construction, agriculture, and vehicle emissions. "
+            "These particles penetrate the throat and lungs, causing respiratory issues, asthma, and cardiovascular strain."
+        ),
+    ),
+)
 
 domain_map: dict[str, str] = {
     "gp": "health",
@@ -32,14 +189,16 @@ domain_map: dict[str, str] = {
 ranking_system = "lower (better) rank = lower (better) decile"
 travel_time_ranking = f"scored by travel time in minutes - lower travel time = better access = {ranking_system}"
 shortest_distance_ranking = (
-    f"scored by distance - shorter distance = better access = {ranking_system}"
+    "scored by travel time in minutes - shorter distance = better access"
 )
 longest_distance_ranking = (
-    f"scored by distance - longer distance = healthier = {ranking_system}"
+    "scored by travel time in minutes - longer distance = healthier"
 )
-ndvi_ranking = f"scored by NDVI - higher NDVI = more vegetation = {ranking_system}"
-polution_ranking = f"scored by concentration of polutant in air - lower pollution = healthier = {ranking_system}"
-aggregation_ranking = f"scored by aggregation - lower (better) score = {ranking_system}"
+ndvi_ranking = "scored by NDVI - higher NDVI = more vegetation"
+polution_ranking = (
+    "scored by concentration of polutant in air - lower pollution = healthier"
+)
+aggregation_ranking = "scored by aggregation - lower score = healthier"
 
 score_description_map: dict[str, str] = {
     "gp": travel_time_ranking,
@@ -103,6 +262,17 @@ def transform_local_file(path: Path = DATA_DIR / "ahah_v5.csv") -> pl.DataFrame:
         decile=(pl.col("percentile") % 10).cast(pl.Int32) + 1,
         description=pl.col("indicator").replace_strict(score_description_map),
     )
+
+
+def get_metadata(
+    risk_day_meta: tuple[Metadata, ...] = RISK_DAY_SCENARIOS,
+    temperature_meta: tuple[Metadata, ...] = TEMPERATURE_SCENARIOS,
+    precipitation_meta: tuple[Metadata, ...] = PRECIPITATION_SCENARIOS,
+) -> pl.DataFrame:
+    """mirrors the above function in order to match the boilerplate and highlight refactoring risks.
+    Users who change the above fucnction MUST also change this functon to ensure consistency.
+    """
+    return pl.DataFrame([*risk_day_meta, *temperature_meta, *precipitation_meta])
 
 
 def get_data(

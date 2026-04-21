@@ -1,10 +1,10 @@
-from pydantic import BaseModel, computed_field
+from jsna_climate_and_environment.datasets.data_model import Metadata, HasDataset
+from pydantic import Field
 from typing import Literal
 from pathlib import Path
 from jsna_climate_and_environment.config import OUTPUT_DIR
 import httpx
 import polars as pl
-import polars.selectors as cs
 import anyio
 from jsna_climate_and_environment.geography.places import SURREY_DISTRICTS
 from jsna_climate_and_environment.geography.esri_api import (
@@ -12,110 +12,124 @@ from jsna_climate_and_environment.geography.esri_api import (
     MET_OFFICE_MAP_SERVER,
     source_url,
 )
+from loguru import logger
 
 
-class Metadata(BaseModel):
-    dataset: str
-    indicator_type: str
-    readable_name: str
-    deffinition: str
-
-    @computed_field
-    @property
-    def source_url(self) -> str:
-        return source_url(MET_OFFICE_MAP_SERVER, self.dataset)
+class ProjectionMetadata(Metadata):
+    source: str = Field(
+        default_factory=lambda data: source_url(MET_OFFICE_MAP_SERVER, data["dataset"])
+    )
 
 
-LA_DATASETS: tuple[Metadata, ...] = (
-    Metadata(
+RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_icing_days_projections_local_authority_v2",
-        indicator_type="icing days",
-        readable_name="Number of days where maximum temperature is below 0°c",
-        deffinition="When temperatures fail to increase above 0°c there is expected to be more extreeme damage to crops, transport disruption and increased energy demand",
+        name_at_source="icing days",
+        description="Number of days where maximum temperature is below 0°c",
+        rationalle="When temperatures fail to increase above 0°c there is expected to be more extreeme damage to crops, transport disruption and increased energy demand",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_frost_days_projections_local_authority_v2",
-        indicator_type="frost days",
-        readable_name="Number of days where minimum temperature is below 0°c",
-        deffinition="When temperatures fall below 0°c there is expected to be damage to crops, transport disruption and increased energy demand",
+        name_at_source="frost days",
+        description="Number of days where minimum temperature is below 0°c",
+        rationalle="When temperatures fall below 0°c there is expected to be damage to crops, transport disruption and increased energy demand",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_growing_degree_days_projections_local_authority_v2",
-        indicator_type="gdd",
-        readable_name="Number of days where average temperature is above 5.5°c",
-        deffinition="When the average temperature is above 5.5°c the conditions are suitable for plant growth",
+        name_at_source="gdd",
+        description="Number of days where average temperature is above 5.5°c",
+        rationalle="When the average temperature is above 5.5°c the conditions are suitable for plant growth",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_cooling_degree_days_projections_local_authority_v2",
-        indicator_type="cdd",
-        readable_name="Number of days where average temperature is above 22°c",
-        deffinition="When the average temperature is above 22°c the sustained increased temperatures are expected to increase energy demand for cooling",
+        name_at_source="cdd",
+        description="Number of days where average temperature is above 22°c",
+        rationalle="When the average temperature is above 22°c the sustained increased temperatures are expected to increase energy demand for cooling",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_summer_days_projections_local_authority_v2",
-        indicator_type="summer days",
-        readable_name="Count of days where maximum temperature is above 25°c",
-        deffinition="When temperatures reach above 25°c there is expected to be an increase in heat related stress and hospital admissions",
+        name_at_source="summer days",
+        description="Count of days where maximum temperature is above 25°c",
+        rationalle="When temperatures reach above 25°c there is expected to be an increase in heat related stress and hospital admissions",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_tropical_nights_projections_local_authority_v2",
-        indicator_type="tropical nights",
-        readable_name="Count of days where minimum temperature is above 20°c",
-        deffinition="When temperatures do not fall below 20°c there is expected to be an increase in heat related stress and hospital admissions",
+        name_at_source="tropical nights",
+        description="Count of days where minimum temperature is above 20°c",
+        rationalle="When temperatures do not fall below 20°c there is expected to be an increase in heat related stress and hospital admissions",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_hot_summer_days_projections_local_authority_v2",
-        indicator_type="hsd",
-        readable_name="Number of days where maximum temperature is above 30°c",
-        deffinition="When temperatures go above 30°c there is expected to be an increase in heat related illness, transport disruption due to overheating and increased water demand",
+        name_at_source="hsd",
+        description="Number of days where maximum temperature is above 30°c",
+        rationalle="When temperatures go above 30°c there is expected to be an increase in heat related illness, transport disruption due to overheating and increased water demand",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Number of Days",
         dataset="annual_count_of_extreme_summer_days_projections_local_authority_v2",
-        indicator_type="esd",
-        readable_name="Number of days where maximum temperature is above 35°c",
-        deffinition="When temperatures go above 35°c there is expected to be an extreme increase in heat related illness, transport disruption due to overheating and increased water demand",
+        name_at_source="esd",
+        description="Number of days where maximum temperature is above 35°c",
+        rationalle="When temperatures go above 35°c there is expected to be an extreme increase in heat related illness, transport disruption due to overheating and increased water demand",
     ),
-    Metadata(
+)
+TEMPERATURE_SCENARIOS: tuple[Metadata, ...] = (
+    ProjectionMetadata(
+        measure_name="Temperature (°c)",
         dataset="winter_minimum_temperature_change_projections_local_authority_v2",
-        indicator_type="tasmin winter",
-        readable_name="Winter minimum temperature",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="tasmin winter",
+        description="Winter minimum temperature",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Temperature (°c)",
         dataset="winter_average_temperature_change_projections_local_authority_v2",
-        indicator_type="tas winter",
-        readable_name="Winter average temperature",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="tas winter",
+        description="Winter average temperature",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Temperature (°c)",
         dataset="annual_average_temperature_change_projections_local_authority_v2",
-        indicator_type="tas annual",
-        readable_name="Annual average temperature",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="tas annual",
+        description="Annual average temperature",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Temperature (°c)",
         dataset="summer_average_temperature_change_projections_local_authority_v2",
-        indicator_type="tas summer",
-        readable_name="Summer average temperature",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="tas summer",
+        description="Summer average temperature",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Temperature (°c)",
         dataset="summer_maximum_temperature_change_projections_local_authority_v2",
-        indicator_type="tasmax summer",
-        readable_name="Summer maximum temperature",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="tasmax summer",
+        description="Summer maximum temperature",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+)
+PRECIPITATION_SCENARIOS: tuple[Metadata, ...] = (
+    ProjectionMetadata(
+        measure_name="Precipitation (mm/day)",
         dataset="winter_precipitation_change_projections_local_authority_v2",
-        indicator_type="precipitation winter",
-        readable_name="Winter precipitation (mm/day)",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="precipitation winter",
+        description="Winter precipitation (mm/day)",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
-    Metadata(
+    ProjectionMetadata(
+        measure_name="Precipitation (mm/day)",
         dataset="summer_precipitation_change_projections_local_authority_v2",
-        indicator_type="precipitation summer",
-        readable_name="Summer precipitation (mm/day)",
-        deffinition="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        name_at_source="precipitation summer",
+        description="Summer precipitation (mm/day)",
+        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
     ),
 )
 indicator_order = {
@@ -134,7 +148,7 @@ class ValidationError(AssertionError):
     pass
 
 
-def extract_category_part(group: Literal[1, 2, 3]) -> pl.Expr:
+def extract_variable_part(group: Literal[1, 2, 3]) -> pl.Expr:
     """The 'category' column follows a convention which can be split and validated by a regex.
 
     When this regex fails, the convention observed in the data no longer holds true.
@@ -145,40 +159,66 @@ def extract_category_part(group: Literal[1, 2, 3]) -> pl.Expr:
     # group 1 any characters preceeding the scenario pattern
     # group 2 any digits or the following special characters '-.°c'
     # group 3 the final word at the end of the string
+
+    #                      1          2         3
     variable_pattern = r"(.+)\s([\d\-\.°c]+)\s(\w+)$"
     return pl.col("variable").str.extract(variable_pattern, group)
 
 
-def transform_adjustment(calculation: pl.Expr) -> pl.Expr:
-    return (
-        pl.when(pl.col("scenario_type").str.contains("°c"))
-        .then(calculation)
-        .otherwise(pl.col("value"))
-    )
+def tranform_predicted_values(calculation: pl.Expr) -> pl.Expr:
+    """some columns have different measure types depending on whether the value is predicted or observed.
+
+    the 'scenario_type' column is used to apply transformations only on predicted values
+    which are indicated by being a temperature instead of a date range"""
+
+    predicted_flag = pl.col("scenario_type").str.contains("°c")
+    return pl.when(predicted_flag).then(calculation).otherwise("value")
 
 
 def transform_data(df: pl.DataFrame) -> pl.DataFrame:
-    """A single dataframe undergoes the following transformations:
+    """A single dataframe undergoes the following transformation and validation:
+    - ensure the category is District
     - drop redundant columns
+    - unpivot the dataframe to turn each column name into a variable
+    - extract indicator type (tas, precititation, days)
+    - extract scenario type (date range or scenario in °c)
+    - map scenario type to be in degrees only
+    - extract aggregation type (min, median, max)
+    - extract baseline value (the value at 1981-2020)
+    - rename columns
+    - ensure no null values are present
     """
     # This only works on data including districts only
     assert df["category"].unique().item() == "District"
+
     # the pattern below extracts the last word, the numeric measure and the prefix. spaces are assumed to sepperate each part
-    indicator_type = extract_category_part(1)
-    scenario_type = extract_category_part(2)
-    agg_type = extract_category_part(3)
+    indicator_type = extract_variable_part(1)
+    scenario_type = extract_variable_part(2)
+    predicted_flag = scenario_type.str.contains("°c")
+    agg_type = extract_variable_part(3)
+    degrees_above_baseline = scenario_type.replace_strict(indicator_order)
+    district_code = pl.col("code")
+    baseline = pl.first("value").over(
+        district_code,
+        indicator_type,
+        agg_type,
+        order_by=degrees_above_baseline,
+        descending=False,
+    )
 
     df = (
         df.drop("objectid", "name", "category", "shape__area", "shape__length")
         .unpivot(index="code")
         .select(
-            district_code="code",
+            district_code=district_code,
             value="value",
             variable="variable",
             indicator_type=indicator_type,
             scenario_type=scenario_type,
             agg_type=agg_type,
-            degrees_above_baseline=scenario_type.replace_strict(indicator_order),
+            degrees_above_baseline=degrees_above_baseline,
+            baseline=baseline,
+            predicted_flag=predicted_flag,
         )
     )
 
@@ -196,102 +236,176 @@ def transform_data(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-async def _iter_all_datasets() -> list[pl.DataFrame]:
+async def async_get_data(dataset: HasDataset | str, client: httpx.AsyncClient):
+    """async function to fetch met office data. Use when downloading multiple datasets"""
+    if isinstance(dataset, HasDataset):
+        dataset = dataset.dataset
+    df = await async_query_without_geometry(
+        client,
+        MET_OFFICE_MAP_SERVER,
+        dataset,
+        where=f"CODE in {SURREY_DISTRICTS}",
+    )
+    return df
+
+
+def validate_initial_transformation(
+    df: pl.DataFrame, metadata: Metadata
+) -> pl.DataFrame:
+    if df.is_empty():
+        raise ValidationError(
+            f"Dataset is empty indicating a data sourcing issue for {metadata.source}"
+        )
+
+    transformed = transform_data(df).filter(
+        indicator_type=pl.lit(metadata.name_at_source)
+    )
+    if transformed.is_empty():
+        raise ValidationError(
+            f"Dataset is empty indicating a metadata issue for {metadata}"
+        )
+    return transformed
+
+
+async def async_get_datasets(*datasets: Metadata) -> pl.DataFrame:
+    """asynchronously download the data improving the speed of downloads.
+
+    Validation applied to check dataframe is not empty.
+    An empty dataframe indicates an issue with the metadata."""
     client = httpx.AsyncClient()
     data: list[pl.DataFrame] = []
-    for metadata in LA_DATASETS:
-        df = await async_query_without_geometry(
-            client,
-            MET_OFFICE_MAP_SERVER,
-            metadata.dataset,
-            where=f"CODE in {SURREY_DISTRICTS}",
-        )
-        if df.is_empty():
-            raise ValidationError(
-                f"Dataset is empty indicating a data sourcing issue for {metadata.source_url}"
-            )
-
-        transformed = transform_data(df).filter(
-            indicator_type=pl.lit(metadata.indicator_type)
-        )
-        if transformed.is_empty():
-            raise ValidationError(
-                f"Dataset is empty indicating a metadata issue for {metadata}"
-            )
+    for metadata in datasets:
+        df = await async_get_data(metadata, client)
+        transformed = validate_initial_transformation(df, metadata)
         data.append(transformed)
 
-    return data
+    return pl.concat(data, how="vertical_relaxed")
 
 
-def get_climate_projections_all_districts():
-    # the baseline year according to the doccuumentation is the first range of years available (ie. 1981-2020)
-    baseline = pl.first("value").over(
-        "district_code",
-        "indicator_type",
-        "agg_type",
-        order_by="degrees_above_baseline",
-        descending=False,
-    )
+def pivot_with_adjusted_values(df: pl.DataFrame, calculation: pl.Expr) -> pl.DataFrame:
+    """following an initial transformation, the variables and information extracted from these can be used to unpivot the data.
 
-    # predicted values indicating a temperature change can be added
-    tas_adjusted = transform_adjustment(baseline + pl.col("value"))
+    This allows the min max and median values to all be included in a single record.
 
-    # predicted values indicating percentage change can be transformed into a value
-    proportion_increase = pl.col("value") / 100
-    value_change = proportion_increase * baseline.abs()
-    precipitation_adjusted = transform_adjustment(baseline + value_change)
-
-    # observed values should remain as they are, predicted values shuld be transformed to include a temperature change
-    value_adjusted = (
-        pl.when(pl.col("indicator_type").str.starts_with("tas"))
-        .then(tas_adjusted)
-        .when(pl.col("indicator_type").str.starts_with("precipitation"))
-        .then(precipitation_adjusted)
-        .otherwise(pl.col("value"))
-    )
+    Custom calculations must be applied depending on the dataset to ensure the values are consistent across observed or predicted scenarios
+    """
     return (
-        pl.concat(anyio.run(_iter_all_datasets), how="vertical_relaxed")
-        .with_columns(value_adjusted=value_adjusted)
+        df.with_columns(value_adjusted=tranform_predicted_values(calculation))
         .pivot(
             "agg_type",
-            values=["value", "value_adjusted"],
-            index=cs.all().exclude(
-                "variable", "agg_type", "value", "source", "value_adjusted"
-            ),
+            values=["value_adjusted"],
+            index=[
+                "district_code",
+                "indicator_type",
+                "scenario_type",
+                "degrees_above_baseline",
+            ],
         )
         .sort(
             "indicator_type",
             "district_code",
             "degrees_above_baseline",
         )
-        .drop("degrees_above_baseline")
     )
 
 
-def get_data(
-    output_file: Path = OUTPUT_DIR / "climate_projections.csv", overwrite: bool = False
-) -> pl.DataFrame:
-    if output_file.exists() and not overwrite:
-        return pl.read_csv(output_file)
+async def get_risk_day_scenarios(*metadata: Metadata) -> pl.DataFrame:
+    """the risk day scenarios are a measure of how many days meet temperature thresholds associated with some risk.
+    these scenarios require no custom transformation as the number of days observed and the number of days predicted are the same measure
 
-    surrey_df = get_climate_projections_all_districts()
-    surrey_df.write_csv(output_file)
-    return surrey_df
+    can be used for testing with
+    >>> anyio.run(get_risk_day_scenarios, Metadata(...))
+    """
+    df = await async_get_datasets(*metadata)
+    return pivot_with_adjusted_values(df, pl.col("value"))
+
+
+async def get_temperature_scenarios(*metadata: Metadata) -> pl.DataFrame:
+    """the temperature scenarios are a measure of temperature change.
+    these scenarios require transformation as the temperature observed and the predicted temperature increase are different values.
+    - the predicted increase is added to the baseline value (ie. the observed value in 1981-2000)
+
+    can be used for testing with
+    >>> anyio.run(get_risk_day_scenarios, Metadata(...))
+    """
+    df = await async_get_datasets(*metadata)
+    return pivot_with_adjusted_values(df, pl.col("baseline") + pl.col("value"))
+
+
+async def get_precipitation_scenarios(*metadata: Metadata) -> pl.DataFrame:
+    """the preciptation scenarios are a measure of precipitation change.
+    these scenarios require transformation as the precipitation observed and the predicted percentage increase are different values.
+    - the predicted percentage increase is converted to a proportion
+    - the proportion is multiplied by the absolute baseline value (when temperatures are negative, the increase should not be negative)
+    - the value change is added to the baseline value (ie. the observed value in 1981-2000)
+
+    can be used for testing with
+    >>> anyio.run(get_risk_day_scenarios, Metadata(...))
+    """
+    proportion_increase = pl.col("value") / 100
+    value_change = proportion_increase * pl.col("baseline").abs()
+    df = await async_get_datasets(*metadata)
+    return pivot_with_adjusted_values(df, pl.col("baseline") + value_change)
+
+
+async def _get_climate_projections(
+    risk_day_meta: tuple[Metadata, ...] = RISK_DAY_SCENARIOS,
+    temperature_meta: tuple[Metadata, ...] = TEMPERATURE_SCENARIOS,
+    precipitation_meta: tuple[Metadata, ...] = PRECIPITATION_SCENARIOS,
+):
+    """utility function enabling all the transformations to run asynchronously with
+    >>> anyio.run(get_climate_projections)
+
+      should not need to change the default values.
+    They are defined as input parameters to highlight refactoring risks
+    """
+    return pl.concat(
+        [
+            await get_risk_day_scenarios(*risk_day_meta),
+            await get_temperature_scenarios(*temperature_meta),
+            await get_precipitation_scenarios(*precipitation_meta),
+        ],
+        how="vertical_relaxed",
+    )
 
 
 def get_metadata(
-    data: pl.DataFrame,
-    output_file: Path = OUTPUT_DIR / "climate_projections_meta.csv",
-    overwrite: bool = False,
+    risk_day_meta: tuple[Metadata, ...] = RISK_DAY_SCENARIOS,
+    temperature_meta: tuple[Metadata, ...] = TEMPERATURE_SCENARIOS,
+    precipitation_meta: tuple[Metadata, ...] = PRECIPITATION_SCENARIOS,
 ) -> pl.DataFrame:
-    if output_file.exists() and not overwrite:
-        return pl.read_csv(output_file)
+    """mirrors the above function in order to match the boilerplate and highlight refactoring risks.
+    Users who change the above fucnction MUST also change this functon to ensure consistency.
+    """
+    return pl.DataFrame([*risk_day_meta, *temperature_meta, *precipitation_meta])
 
-    meta_df = pl.DataFrame(LA_DATASETS)
-    meta_df.write_csv(output_file)
-    return meta_df
+
+def get_climate_projections(
+    cache: Path | None = OUTPUT_DIR / "climate_projections.csv",
+) -> pl.DataFrame:
+    """utility function returns the data. If the data exists locally, this is used.
+
+    to overwrite data ise the write_data function"""
+    if cache is None or not cache.exists():
+        logger.info("Downloading Data for climate projections...")
+        return anyio.run(_get_climate_projections)
+    return pl.read_csv(cache)
+
+
+def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
+    """ETL entry point. Will always overwrite data"""
+    meta_dir = output_dir / "metadata"
+    if not meta_dir.exists():
+        logger.info(f"Creating local storen for data at: {output_dir}...")
+
+    surrey_df = get_climate_projections(cache=None)
+    meta_df = get_metadata()
+    logger.info(f"Writing data to: '{output_dir / 'climate_projections.csv'}'")
+    surrey_df.write_csv(output_dir / "climate_projections.csv")
+    logger.info(f"Writing metadata to: '{meta_dir / 'climate_projections.csv'}'")
+    meta_df.write_csv(meta_dir / "climate_projections.csv")
+    logger.success("Data has been refreshed for 'climate_projections.csv'")
 
 
 if __name__ == "__main__":
-    df = get_data(overwrite=True)
-    print(get_metadata(df))
+    refresh_data()

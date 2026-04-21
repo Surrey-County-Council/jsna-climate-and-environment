@@ -310,7 +310,7 @@ def get_surrey_ahah(
 
     to overwrite data use the refresh_data function"""
     if cache is None or not cache.exists():
-        logger.info("Downloading Data for climate projections...")
+        logger.info("Downloading Data for Access to healthy assets and hazards...")
         return get_data()
     return pl.read_csv(cache)
 

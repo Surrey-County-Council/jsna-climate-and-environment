@@ -6,8 +6,8 @@ import geopandas as gpd
 import polars as pl
 from loguru import logger
 
-MET_OFFICE_MAP_SERVER = "Lq3V5RFuTBC9I7kv"
-ONS_OPEN_GEOGRAPHY_MAP_SERVER = "ESMARspQHYMw9BZ9"
+MET_OFFICE_MAP_SERVER = "https://services.arcgis.com/Lq3V5RFuTBC9I7kv"
+ONS_OPEN_GEOGRAPHY_MAP_SERVER = "https://services1.arcgis.com/ESMARspQHYMw9BZ9"
 
 
 class FieldModel(BaseModel):
@@ -51,8 +51,8 @@ class QueryResponse(BaseModel):
         )
 
 
-def source_url(service: str, dataset: str):
-    return f"https://services.arcgis.com/{service}/arcgis/rest/services/{dataset}/FeatureServer"
+def source_url(service_url: str, dataset: str):
+    return f"{service_url}/arcgis/rest/services/{dataset}/FeatureServer"
 
 
 async def async_query_without_geometry(
@@ -117,7 +117,7 @@ def get_item_id(
 ) -> str:
     """for large datasets where replicas are not supported, an item_id may be used to dowload the full file (limitations may apply)"""
     response = httpx.get(
-        url=f"{source_url(service, dataset)}/FeatureServer",
+        url=f"{source_url(service, dataset)}",
         params=dict(f="json"),
         timeout=5 * 60,
     )
@@ -125,6 +125,7 @@ def get_item_id(
     response_content = response.json()
     if "serviceItemId" in response_content:
         return response_content["serviceItemId"]
+    logger.error(response.url)
     raise httpx.HTTPStatusError(
         str(response_content), response=response, request=response.request
     )
@@ -143,7 +144,7 @@ def read_csv_lookup(
     logger.info(f"reading data from {url}")
     response = httpx.get(
         url=url,
-        params=dict(format="csv", spatialRefId=spatialRefId, where=where),
+        params=dict(format=format, spatialRefId=spatialRefId, where=where),
         timeout=5 * 60,
     )
     return pl.read_csv(response.content, infer_schema=False).with_columns(

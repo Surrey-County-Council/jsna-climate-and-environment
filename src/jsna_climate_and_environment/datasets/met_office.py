@@ -19,64 +19,57 @@ class ProjectionMetadata(Metadata):
     source: str = Field(
         default_factory=lambda data: source_url(MET_OFFICE_MAP_SERVER, data["dataset"])
     )
+    description: str = Field(default_factory=lambda data: data["indicator_name"])
 
 
 RISK_DAY_SCENARIOS: tuple[Metadata, ...] = (
     ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_icing_days_projections_local_authority_v2",
         name_at_source="icing days",
-        description="Number of days where maximum temperature is below 0°c",
-        rationalle="When temperatures fail to increase above 0°c there is expected to be more extreeme damage to crops, transport disruption and increased energy demand",
+        indicator_name="sustained freeze risk",
+        description="Number of days per year where temperatures reamin below 0°c",
+        rationalle="When temperatures stay below 0°c there is expected to be more extreme damage to crops, transport disruption and increased energy demand",
     ),
     ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_frost_days_projections_local_authority_v2",
         name_at_source="frost days",
-        description="Number of days where minimum temperature is below 0°c",
+        indicator_name="freeze risk",
+        description="Number of days per year where temperatures fall below 0°c",
         rationalle="When temperatures fall below 0°c there is expected to be damage to crops, transport disruption and increased energy demand",
     ),
     ProjectionMetadata(
-        measure_name="Number of Days",
-        dataset="annual_count_of_growing_degree_days_projections_local_authority_v2",
-        name_at_source="gdd",
-        description="Number of days where average temperature is above 5.5°c",
-        rationalle="When the average temperature is above 5.5°c the conditions are suitable for plant growth",
-    ),
-    ProjectionMetadata(
-        measure_name="Number of Days",
-        dataset="annual_count_of_cooling_degree_days_projections_local_authority_v2",
-        name_at_source="cdd",
-        description="Number of days where average temperature is above 22°c",
-        rationalle="When the average temperature is above 22°c the sustained increased temperatures are expected to increase energy demand for cooling",
-    ),
-    ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_summer_days_projections_local_authority_v2",
         name_at_source="summer days",
-        description="Count of days where maximum temperature is above 25°c",
+        indicator_name="heat risk",
+        description="Number of days per year where temperatures reach above 25°c",
         rationalle="When temperatures reach above 25°c there is expected to be an increase in heat related stress and hospital admissions",
     ),
     ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_tropical_nights_projections_local_authority_v2",
         name_at_source="tropical nights",
-        description="Count of days where minimum temperature is above 20°c",
-        rationalle="When temperatures do not fall below 20°c there is expected to be an increase in heat related stress and hospital admissions",
+        indicator_name="sustained heat risk",
+        description="Number of days per year where temperatures remain above 20°c",
+        rationalle="When temperatures stay above 20°c there is expected to be an increase in heat related stress and hospital admissions",
     ),
     ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_hot_summer_days_projections_local_authority_v2",
         name_at_source="hsd",
-        description="Number of days where maximum temperature is above 30°c",
-        rationalle="When temperatures go above 30°c there is expected to be an increase in heat related illness, transport disruption due to overheating and increased water demand",
+        indicator_name="major heat risk",
+        description="Number of days per year where temperatures reach above 30°c",
+        rationalle="When temperatures reach 30°c there is expected to be an increase in heat related illness, transport disruption due to overheating and increased water demand",
     ),
     ProjectionMetadata(
-        measure_name="Number of Days",
+        measure_name="Days per Year",
         dataset="annual_count_of_extreme_summer_days_projections_local_authority_v2",
         name_at_source="esd",
-        description="Number of days where maximum temperature is above 35°c",
-        rationalle="When temperatures go above 35°c there is expected to be an extreme increase in heat related illness, transport disruption due to overheating and increased water demand",
+        indicator_name="extreme heat risk",
+        description="Number of days per year where temperatures reach above 35°c",
+        rationalle="When temperatures reach 35°c there is expected to be an extreme increase in heat related illness, transport disruption due to overheating and increased water demand",
     ),
 )
 TEMPERATURE_SCENARIOS: tuple[Metadata, ...] = (
@@ -84,36 +77,41 @@ TEMPERATURE_SCENARIOS: tuple[Metadata, ...] = (
         measure_name="Temperature (°c)",
         dataset="winter_minimum_temperature_change_projections_local_authority_v2",
         name_at_source="tasmin winter",
-        description="Winter minimum temperature",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Winter minimum",
+        description="Minimum temperature reached over 20 years",
+        rationalle="Understanding the lowest temperatures expected is important when considering tollerances to extreme cold",
     ),
     ProjectionMetadata(
         measure_name="Temperature (°c)",
         dataset="winter_average_temperature_change_projections_local_authority_v2",
         name_at_source="tas winter",
-        description="Winter average temperature",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Winter average",
+        description="Average winter temperature over 20 years",
+        rationalle="Understanding the ambient winter temperature is important when considering demand for heating",
     ),
     ProjectionMetadata(
         measure_name="Temperature (°c)",
         dataset="annual_average_temperature_change_projections_local_authority_v2",
         name_at_source="tas annual",
-        description="Annual average temperature",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Annual average",
+        description="Average temperature over 20 years",
+        rationalle="Understanding the ambient yearly temperature is important when comparing local warming to global warming. Urban areas typically experience more warming.",
     ),
     ProjectionMetadata(
         measure_name="Temperature (°c)",
         dataset="summer_average_temperature_change_projections_local_authority_v2",
         name_at_source="tas summer",
-        description="Summer average temperature",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Summer average",
+        description="Average summer temperature in over 20 years",
+        rationalle="Understanding the ambient summer temperature is important when considering demand for cooling",
     ),
     ProjectionMetadata(
         measure_name="Temperature (°c)",
         dataset="summer_maximum_temperature_change_projections_local_authority_v2",
         name_at_source="tasmax summer",
-        description="Summer maximum temperature",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Summer maximum",
+        description="Maximum summer temperature over 20 years",
+        rationalle="Understanding the highest temperatures expected is important when considering tollerances to extreme heat",
     ),
 )
 PRECIPITATION_SCENARIOS: tuple[Metadata, ...] = (
@@ -121,15 +119,17 @@ PRECIPITATION_SCENARIOS: tuple[Metadata, ...] = (
         measure_name="Precipitation (mm/day)",
         dataset="winter_precipitation_change_projections_local_authority_v2",
         name_at_source="precipitation winter",
-        description="Winter precipitation (mm/day)",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Winter average",
+        description="Average mm of rainfall each day in winter",
+        rationalle="Higher rainfall over the winter months may indicate flooding risk",
     ),
     ProjectionMetadata(
         measure_name="Precipitation (mm/day)",
         dataset="summer_precipitation_change_projections_local_authority_v2",
         name_at_source="precipitation summer",
-        description="Summer precipitation (mm/day)",
-        rationalle="1981-2000 is roughly equivalent to a 0.51°c warming scenario, 2001-2021 is roughly equivalent to a 0.87°c warming scenario",
+        indicator_name="Summer average",
+        description="Average mm of rainfall each day in summer",
+        rationalle="Lower rainfall over the summer months may indicate drought risk",
     ),
 )
 indicator_order = {
@@ -256,8 +256,13 @@ def validate_initial_transformation(
             f"Dataset is empty indicating a data sourcing issue for {metadata.source}"
         )
 
-    transformed = transform_data(df).filter(
-        indicator_type=pl.lit(metadata.name_at_source)
+    transformed = (
+        transform_data(df)
+        .filter(indicator_type=pl.lit(metadata.name_at_source))
+        .with_columns(
+            indicator_name=pl.lit(metadata.indicator_name),
+            measure_name=pl.lit(metadata.measure_name),
+        )
     )
     if transformed.is_empty():
         raise ValidationError(
@@ -295,13 +300,15 @@ def pivot_with_adjusted_values(df: pl.DataFrame, calculation: pl.Expr) -> pl.Dat
             values=["value_adjusted"],
             index=[
                 "district_code",
-                "indicator_type",
+                "indicator_name",
+                "measure_name",
                 "scenario_type",
                 "degrees_above_baseline",
             ],
         )
         .sort(
-            "indicator_type",
+            "measure_name",
+            "indicator_name",
             "district_code",
             "degrees_above_baseline",
         )

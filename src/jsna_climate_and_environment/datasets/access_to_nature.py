@@ -15,6 +15,7 @@ from loguru import logger
 class AccessToNatureMeta(Metadata):
     dataset: str = "Access_to_green_and_blue_space_England"
     source: str = "https://assets.publishing.service.gov.uk/media/69a184aef534e7e99adaeab4/Access_to_green_and_blue_space_England_data_table.ods"
+    rationalle: str = "scores indicate if more or less households meet this criteria when compared to the national average"
 
 
 METADATA: tuple[Metadata, ...] = (
@@ -22,39 +23,36 @@ METADATA: tuple[Metadata, ...] = (
         name_at_source="commitment",
         measure_name="bluespace only",
         description="Households that are within 1km walk of more than 500m walkable bluespace",
-        rationalle=(
+        caveats=(
             "Fewer households will have bluespace within a 15 minute walk. "
             "Areas are expected to be clustered together, gaps inside clusters are indicitive of barriers to access. "
-            "It's expected people would only make a 15 minute walk if there was a large area of bluespace. "
         ),
     ),
     AccessToNatureMeta(
         name_at_source="commitment",
         measure_name="greenspace only",
         description="Households that meet any of the government's commitments to access excluding bluespace",
-        rationalle=(
-            "Even where households can access bluespace, they will still benefit from accessible greenspace. "
+        caveats=(
             "Areas are expected to have a more uniform distribution with urban areas more likely to have poorer access. "
         ),
     ),
     AccessToNatureMeta(
         name_at_source="commitment",
-        measure_name="greenspace or bluespace",
+        measure_name="greenspace and bluespace",
         description="Households that meet any of the government's commitments to access",
-        rationalle=(
+        caveats=(
             "100% of households are expected to meet this committment: "
             "Make sure that everyone has access to green or blue spaces within a 15-minute walk from home."
         ),
+        rationalle="scores indicate if the area meets the committment, a score of 0 indicates the commitment has been reached, negative scores indicate how far from the committment we may be",
     ),
     AccessToNatureMeta(
         name_at_source="doorstep",
         measure_name="greenspace only",
         description="Households that are within 200 meters of more than 0.5 hectares of greenspace",
-        rationalle=(
+        caveats=(
             "0.5 hectares as a perfect square would have sides 70 meters in length, and be slightly smaller than a football pitch. "
-            "Dense urban areas often have more limited space available and greenspace is often smaller. "
             "The 'Swan Center Urban Regeneration project' will be approximately 0.8 hectares and would be an example of greenspace in development considering doorstep access.  "
-            "Clusters of areas with good doorstep access might help indicate areas where more options for greenspace access exist."
         ),
     ),
     AccessToNatureMeta(
@@ -79,7 +77,7 @@ METADATA: tuple[Metadata, ...] = (
     ),
     AccessToNatureMeta(
         name_at_source="neighbourhood",
-        measure_name="greenspace or bluespace",
+        measure_name="greenspace and bluespace",
         description="Households that are within 1 kilometer of more than 10 minutes walkable greenspace or bluespace",
         rationalle=(
             "550m in a straight line would highlight walking trails that might be excluded when measuring area. "
@@ -152,7 +150,7 @@ def get_unpivoted_indicators() -> pl.DataFrame:
 
     long_df = pl.concat(
         [
-            unpivot_numerators(green_blue_df, "greenspace or bluespace"),
+            unpivot_numerators(green_blue_df, "greenspace and bluespace"),
             unpivot_numerators(green_df, "greenspace only"),
             unpivot_numerators(blue_df, "bluespace only"),
         ]
@@ -160,12 +158,7 @@ def get_unpivoted_indicators() -> pl.DataFrame:
     return long_df
 
 
-@cache
-def get_surrey_unpivoted_indicators() -> pl.DataFrame:
-    return get_unpivoted_indicators().filter(pl.col("LAD25CD").is_in(SURREY_DISTRICTS))
-
-
-def get_metadata(metadata: tuple[Metadata, ...] = METADATA):
+def get_metadata(metadata: tuple[Metadata, ...] = METADATA) -> pl.DataFrame:
     """in addition to the standard metadata, comparison values are included for this dataset.
 
     This requires the original data to be filtered and grouped for a surrey and a england comparison
@@ -173,49 +166,61 @@ def get_metadata(metadata: tuple[Metadata, ...] = METADATA):
     # The get_unpivoted_indicators functon is cached in memory to prevent it from running twice
     # see functols.cache
     long_df = get_unpivoted_indicators()
-    surrey_df = get_surrey_unpivoted_indicators()
+    surrey_df = long_df.filter(pl.col("LAD25CD").is_in(SURREY_DISTRICTS))
 
-    england_val = long_df.group_by("indicator", "measure").agg(
+    england_val = long_df.group_by(
+        indicator_name="indicator", measure_name="measure"
+    ).agg(
         england_numerator=pl.sum("numerator"),
         england_denominator=pl.sum("denominator"),
         england_value=percent_calc(pl.sum("numerator"), pl.sum("denominator")),
     )
 
-    surrey_val = surrey_df.group_by("indicator", "measure").agg(
+    surrey_val = surrey_df.group_by(
+        indicator_name="indicator", measure_name="measure"
+    ).agg(
         surrey_numerator=pl.sum("numerator"),
         surrey_denominator=pl.sum("denominator"),
         surrey_value=percent_calc(pl.sum("numerator"), pl.sum("denominator")),
     )
     return (
         pl.DataFrame(metadata)
-        .join(surrey_val, on=["indicator", "measure"], validate="1:1")
-        .join(england_val, on=["indicator", "measure"], validate="1:1")
+        .join(surrey_val, on=["indicator_name", "measure_name"], validate="1:1")
+        .join(england_val, on=["indicator_name", "measure_name"], validate="1:1")
     )
 
 
 def group_surrey_data(area_code: Literal["LAD25CD", "LSOA21CD"]):
+    total_over_indicator = percent_calc(
+        pl.sum("numerator").over("indicator", "measure"),
+        pl.sum("denominator").over("indicator", "measure"),
+    )
+    comparison_metric = (
+        (
+            pl.when(
+                indicator=pl.lit("commitment"),
+                measure=pl.lit("greenspace and bluespace"),
+            )
+            .then(pl.col("value") - 100)
+            .otherwise(pl.col("value") - total_over_indicator)
+        )
+        // 10
+    ).cast(pl.Int32)
     return (
-        get_surrey_unpivoted_indicators()
+        get_unpivoted_indicators()
+        .with_columns(is_surrey=pl.col("LAD25CD").is_in(SURREY_DISTRICTS))
         .group_by("indicator", "measure", area_code)
         .agg(
+            pl.all("is_surrey"),
             pl.sum("numerator"),
             pl.sum("denominator"),
             value=percent_calc(pl.sum("numerator"), pl.sum("denominator")),
         )
         .sort("indicator")
+        .with_columns(score=comparison_metric)
+        .filter("is_surrey")
+        .drop("is_surrey")
     )
-
-
-def get_access_to_nature_district(
-    cache: Path | None = OUTPUT_DIR / "access_to_nature_district.csv",
-) -> pl.DataFrame:
-    """utility function returns the data. If the data exists locally, this is used.
-
-    to overwrite data use the refresh_data function"""
-    if cache is None or not cache.exists():
-        logger.info("Downloading Data for access to nature...")
-        return group_surrey_data("LAD25CD")
-    return pl.read_csv(cache)
 
 
 def get_access_to_nature_lsoa(
@@ -230,6 +235,18 @@ def get_access_to_nature_lsoa(
     return pl.read_csv(cache)
 
 
+def get_access_to_nature_district(
+    cache: Path | None = OUTPUT_DIR / "access_to_nature_district.csv",
+) -> pl.DataFrame:
+    """utility function returns the data. If the data exists locally, this is used.
+
+    to overwrite data use the refresh_data function"""
+    if cache is None or not cache.exists():
+        logger.info("Downloading Data for access to nature...")
+        return group_surrey_data("LAD25CD")
+    return pl.read_csv(cache)
+
+
 def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
     """ETL entry point. Will always overwrite data"""
     meta_dir = output_dir / "metadata"
@@ -237,13 +254,17 @@ def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
         logger.info(f"Creating local store for data at: {output_dir}...")
         meta_dir.mkdir(parents=True)
 
-    surrey_district_df = get_access_to_nature_district(cache=None)
+    # surrey_district_df = get_access_to_nature_district(cache=None)
     surrey_lsoa_df = get_access_to_nature_lsoa(cache=None)
     meta_df = get_metadata()
-    logger.info(f"Writing data to: '{output_dir / 'access_to_nature_district.csv'}'")
-    surrey_district_df.write_csv(output_dir / "access_to_nature_district.csv")
+    # logger.info(f"Writing data to: '{output_dir / 'access_to_nature_district.csv'}'")
+    # surrey_district_df.write_csv(output_dir / "access_to_nature_district.csv")
     logger.info(f"Writing data to: '{output_dir / 'access_to_nature_lsoa.csv'}'")
     surrey_lsoa_df.write_csv(output_dir / "access_to_nature_lsoa.csv")
     logger.info(f"Writing metadata to: '{meta_dir / 'access_to_nature.csv'}'")
     meta_df.write_csv(meta_dir / "access_to_nature.csv")
     logger.success("Data has been refreshed for 'access_to_nature_{district/lsoa}.csv'")
+
+
+if __name__ == "__main__":
+    refresh_data()

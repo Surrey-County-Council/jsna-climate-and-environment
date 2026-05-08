@@ -5,7 +5,6 @@ import shutil
 import tempfile
 from os import PathLike
 from pathlib import Path
-import functools
 from jsna_climate_and_environment.geography.esri_api import (
     read_boundary_dataset,
     read_csv_lookup,
@@ -96,8 +95,8 @@ def get_nspl(
 # census boundaries change less frequently but are versioned
 def get_surrey_lsoas(
     dataset: Literal[
-        "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFE_V10"
-    ] = "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFE_V10",
+        "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10"
+    ] = "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10",
 ) -> gpd.GeoDataFrame:
     mapping = get_nspl()
 

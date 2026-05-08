@@ -1,8 +1,4 @@
-"""Access to the data requires registration. go to https://apps.cdrc.ac.uk/datasetportal/Identity/Account/Register
-
-Once registered generate an API key and save it as an env variable 'CDRC_API_KEY'
-
-"""
+"""Access to the data may require registration. go to https://apps.cdrc.ac.uk/datasetportal/Identity/Account/Register"""
 
 from typing import Literal
 

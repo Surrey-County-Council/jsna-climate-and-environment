@@ -402,7 +402,7 @@ def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
     """ETL entry point. Will always overwrite data"""
     meta_dir = output_dir / "metadata"
     if not meta_dir.exists():
-        logger.info(f"Creating local storen for data at: {output_dir}...")
+        logger.info(f"Creating local store for data at: {output_dir}...")
         meta_dir.mkdir(parents=True)
 
     surrey_df = get_climate_projections(cache=None)

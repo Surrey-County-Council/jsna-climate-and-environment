@@ -1,3 +1,5 @@
+from typing import Literal
+from jsna_climate_and_environment.datasets.data_model import Metadata
 from pathlib import Path
 from jsna_climate_and_environment.config import OUTPUT_DIR
 from jsna_climate_and_environment.geography.places import read_gdb
@@ -7,25 +9,104 @@ from fastexcel import read_excel
 import fsspec
 import re
 from collections.abc import Iterable
+from loguru import logger
 
-domain_map = {
-    "income_deprivation_affecting_older_people_idaopi": "income",
-    "children_and_young_people_sub_domain": "education",
-    "barriers_to_housing_and_services": "barriers",
-    "living_environment": "living_env",
-    "indoors_sub_domain": "living_env",
-    "adult_skills_sub_domain": "education",
-    "wider_barriers_sub_domain": "barriers",
-    "income_deprivation_affecting_children_index_idaci": "income",
-    "income": "income",
-    "geographical_barriers_sub_domain": "barriers",
-    "index_of_multiple_deprivation_imd": "overall_index",
-    "outdoors_sub_domain": "living_env",
-    "education_skills_and_training": "education",
-    "crime": "crime",
-    "health_deprivation_and_disability": "health",
-    "employment": "employment",
-}
+
+class IodScoreMetadata(Metadata):
+    source: Literal[
+        "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
+    ] = "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
+    dataset: Literal["2025_indicies_of_deprivation"] = "2025_indicies_of_deprivation"
+    description: str = "Higher rank/recile = more deprived"
+    rationalle: str = "Domains and subdomains of deprivation give an indication of the types of deprivation"
+
+
+IMD_INDICATOR: Metadata = IodScoreMetadata(
+    measure_name="Overall Index",
+    name_at_source="index_of_multiple_deprivation_imd",
+    indicator_name="Index of Multiple Deprivation",
+    description="Higher rank/recile = more deprived",
+    rationalle="Key neighborhoods are identified by an IMD decile of 2 or 3",
+)
+
+IOD_INDICATORS: tuple[Metadata, ...] = (
+    IMD_INDICATOR,
+    IodScoreMetadata(
+        measure_name="Living Environment",
+        name_at_source="living_environment",
+        indicator_name="Living Environment Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Living Environment",
+        name_at_source="indoors_sub_domain",
+        indicator_name="Indoors Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Living Environment",
+        name_at_source="outdoors_sub_domain",
+        indicator_name="Outdoors Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Income",
+        name_at_source="income",
+        indicator_name="Income Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Income",
+        name_at_source="income_deprivation_affecting_older_people",
+        indicator_name="Income Deprivation Affecting Older People",
+    ),
+    IodScoreMetadata(
+        measure_name="Income",
+        name_at_source="income_deprivation_affecting_children_index_idaci",
+        indicator_name="Income Deprivation Affecting Older People",
+    ),
+    IodScoreMetadata(
+        measure_name="Education",
+        name_at_source="education_skills_and_training",
+        indicator_name="Education Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Education",
+        name_at_source="adult_skills_sub_domain",
+        indicator_name="Adult Skills Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Education",
+        name_at_source="children_and_young_people_sub_domain",
+        indicator_name="Children And Young People Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Barriers",
+        name_at_source="barriers_to_housing_and_services",
+        indicator_name="Education Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Barriers",
+        name_at_source="wider_barriers_sub_domain",
+        indicator_name="Wider Barriers Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Barriers",
+        name_at_source="geographical_barriers_sub_domain",
+        indicator_name="Geographical Barriers Sub Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Crime",
+        name_at_source="crime",
+        indicator_name="Crime Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Health",
+        name_at_source="health_deprivation_and_disability",
+        indicator_name="Health Domain",
+    ),
+    IodScoreMetadata(
+        measure_name="Employment",
+        name_at_source="employment",
+        indicator_name="Employment Domain",
+    ),
+)
 
 
 def _iter_excel_sheet(source: str) -> Iterable[pl.DataFrame]:
@@ -64,58 +145,14 @@ def _transform_underlying_indicators(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def _transform_summary(df: pl.DataFrame) -> pl.DataFrame:
-    return (
-        df.rename(lambda x: x.split("-")[-1])
-        .rename(iod_column_cleaner)
-        .unpivot(index=cs.string(), variable_name="measure_type")
-    )
-
-
-def get_underlying_indicators(
-    source: str = "https://assets.publishing.service.gov.uk/media/691dec012c6b98ecdbc500d4/File_8_IoD2025_Underlying_Indicators.xlsx",
-) -> pl.DataFrame:
-    return pl.concat(
-        _transform_underlying_indicators(df) for df in _iter_excel_sheet(source)
-    )
-
-
-def get_ltla_summary(
-    source: str = "https://assets.publishing.service.gov.uk/media/6917412ebc34c86ce4e6e7fc/File_10_-_IoD2025_Local_Authority_District_Summaries__lower-tier__v2.xlsx",
-) -> pl.DataFrame:
-    return pl.concat(_transform_summary(df) for df in _iter_excel_sheet(source))
-
-
-def get_utla_summary(
-    source: str = "https://assets.publishing.service.gov.uk/media/6917414ab49cc44345161802/File_11_-_IoD2025_Local_Authority_District_Summaries__upper-tier__v2.xlsx",
-) -> pl.DataFrame:
-    return pl.concat(_transform_summary(df) for df in _iter_excel_sheet(source))
-
-
 def get_imd_domains(
-    source: str = "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv",
+    metadata: tuple[Metadata, ...],
 ) -> pl.DataFrame:
-    domain_map = {
-        "income_deprivation_affecting_older_people_idaopi": "income",
-        "children_and_young_people_sub_domain": "education",
-        "barriers_to_housing_and_services": "barriers",
-        "living_environment": "living_env",
-        "indoors_sub_domain": "living_env",
-        "adult_skills_sub_domain": "education",
-        "wider_barriers_sub_domain": "barriers",
-        "income_deprivation_affecting_children_index_idaci": "income",
-        "income": "income",
-        "geographical_barriers_sub_domain": "barriers",
-        "index_of_multiple_deprivation_imd": "overall_index",
-        "outdoors_sub_domain": "living_env",
-        "education_skills_and_training": "education",
-        "crime": "crime",
-        "health_deprivation_and_disability": "health",
-        "employment": "employment",
-    }
+    domain_map = {i.name_at_source: i.measure_name for i in metadata}
+    indicator_map = {x.name_at_source: x.indicator_name for x in metadata}
     index_type = pl.col("variable").str.extract("rank|score|decile", 0)
-    suffix = pl.col("variable").str.extract("_(rank|score|decile).*", 0)
-    indicator = pl.col("variable").str.strip_suffix(suffix)
+    suffix_detail = pl.col("variable").str.extract("_(rank|score|decile).*", 0)
+    indicator = pl.col("variable").str.strip_suffix(suffix_detail)
 
     index_cols = (
         "lsoa_code_2021",
@@ -123,16 +160,19 @@ def get_imd_domains(
     )
 
     return (
-        pl.read_csv(source)
+        pl.read_csv(
+            "https://assets.publishing.service.gov.uk/media/691ded56d140bbbaa59a2a7d/File_7_IoD2025_All_Ranks_Scores_Deciles_Population_Denominators.csv"
+        )
         .rename(iod_column_cleaner)
         .unpivot(index=index_cols, on=cs.numeric() ^ cs.contains("mid_2022"))
         .with_columns(index_type=index_type, indicator=indicator)
         .pivot("index_type", values="value", index=(*index_cols, "indicator"))
+        .filter(pl.col("indicator").is_in(indicator_map.keys()))
         .select(
             lsoa21cd="lsoa_code_2021",
             population_estimate_2022="total_population_mid_2022",
             domain=pl.col("indicator").replace_strict(domain_map),
-            indicator="indicator",
+            indicator=pl.col("indicator").replace_strict(indicator_map),
             score="score",
             rank="rank",
             decile="decile",
@@ -140,20 +180,47 @@ def get_imd_domains(
     )
 
 
-def get_data(
-    output_file: Path = OUTPUT_DIR / "iod.csv", overwrite: bool = False
-) -> pl.DataFrame:
-    if output_file.exists() and not overwrite:
-        return pl.read_csv(output_file)
+def get_metadata(metadata: tuple[Metadata, ...] = (IMD_INDICATOR,)) -> pl.DataFrame:
+    """mirrors the above function in order to match the boilerplate and highlight refactoring risks.
+    Users who change the above fucnction MUST also change this functon to ensure consistency.
+    """
+    return pl.DataFrame([*metadata])
 
-    link_df = pl.from_pandas(read_gdb("linking"))
-    surrey_df = get_imd_domains().filter(
+
+def get_data(metadata: tuple[Metadata, ...] = (IMD_INDICATOR,)) -> pl.DataFrame:
+    link_df = pl.from_pandas(read_gdb("nspl"))
+    return get_imd_domains(metadata).filter(
         pl.col("lsoa21cd").is_in(link_df["lsoa21_code"].to_list())
     )
-    surrey_df.write_csv(output_file)
-    return surrey_df
+
+
+def get_surrey_imd(
+    cache: Path | None = OUTPUT_DIR / "imd.csv",
+) -> pl.DataFrame:
+    """utility function returns the data. If the data exists locally, this is used.
+
+    to overwrite data use the refresh_data function"""
+    if cache is None or not cache.exists():
+        logger.info("Downloading Data for Access to healthy assets and hazards...")
+        return get_data()
+    return pl.read_csv(cache)
+
+
+def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
+    """ETL entry point. Will always overwrite data"""
+    meta_dir = output_dir / "metadata"
+    if not meta_dir.exists():
+        logger.info(f"Creating local store for data at: {output_dir}...")
+        meta_dir.mkdir(parents=True)
+
+    surrey_df = get_surrey_imd(cache=None)
+    meta_df = get_metadata()
+    logger.info(f"Writing data to: '{output_dir / 'imd.csv'}'")
+    surrey_df.write_csv(output_dir / "imd.csv")
+    logger.info(f"Writing metadata to: '{meta_dir / 'imd.csv'}'")
+    meta_df.write_csv(meta_dir / "imd.csv")
+    logger.success("Data has been refreshed for 'imd.csv'")
 
 
 if __name__ == "__main__":
-    df = get_data(overwrite=True)
-    print(df)
+    refresh_data()

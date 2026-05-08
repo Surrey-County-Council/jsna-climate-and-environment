@@ -8,49 +8,58 @@ import fastexcel
 import fsspec
 import polars.selectors as cs
 from polars.testing import assert_frame_equal, assert_frame_not_equal
-from jsna_climate_and_environment.geography.places import SURREY_DISTRICTS
+from jsna_climate_and_environment.geography.places import SURREY_DISTRICTS, read_gdb
 from loguru import logger
 
 
 class AccessToNatureMeta(Metadata):
     dataset: str = "Access_to_green_and_blue_space_England"
     source: str = "https://assets.publishing.service.gov.uk/media/69a184aef534e7e99adaeab4/Access_to_green_and_blue_space_England_data_table.ods"
-    rationalle: str = "scores indicate if more or less households meet this criteria when compared to the national average"
+    caveats: str = "scores indicate if more or less households meet this criteria when compared to the national average"
+
+
+class AccessToWoodlandMeta(Metadata):
+    dataset: str = "Access_to_woodland_England"
+    source: str = (
+        "https://cdn.forestresearch.gov.uk/Access_to_Woodland_in_England_2025.ods"
+    )
+    caveats: str = "scores indicate if more or less households meet this criteria when compared to the national average"
 
 
 METADATA: tuple[Metadata, ...] = (
     AccessToNatureMeta(
         name_at_source="commitment",
         measure_name="bluespace only",
-        description="Households that are within 1km walk of more than 500m walkable bluespace",
-        caveats=(
-            "Fewer households will have bluespace within a 15 minute walk. "
-            "Areas are expected to be clustered together, gaps inside clusters are indicitive of barriers to access. "
+        description="Households that are within 1km walk of more than 550m walkable bluespace",
+        rationalle=(
+            "Large bodies of water are only considered accessible when it is possible to walk at least 550m along the water's edge. "
+            "This may highlight barriers that prevent access or the absence of footpaths when overlaid with water boundaries. "
         ),
     ),
     AccessToNatureMeta(
         name_at_source="commitment",
         measure_name="greenspace only",
         description="Households that meet any of the government's commitments to access excluding bluespace",
-        caveats=(
-            "Areas are expected to have a more uniform distribution with urban areas more likely to have poorer access. "
+        rationalle=(
+            "All access metrics for greenspace can be combined to account for differences in the feasibility of including large greenspaces in urban areas. "
+            "Urban areas are less likely to be able to contain 10 hectares of greenspace but may contain numerous smaller areas of greenspace"
         ),
     ),
     AccessToNatureMeta(
         name_at_source="commitment",
         measure_name="greenspace and bluespace",
         description="Households that meet any of the government's commitments to access",
-        caveats=(
+        rationalle=(
             "100% of households are expected to meet this committment: "
             "Make sure that everyone has access to green or blue spaces within a 15-minute walk from home."
         ),
-        rationalle="scores indicate if the area meets the committment, a score of 0 indicates the commitment has been reached, negative scores indicate how far from the committment we may be",
+        caveats="scores indicate if the area meets the committment, a score of 0 indicates the commitment has been reached, negative scores indicate how far from the committment we may be",
     ),
     AccessToNatureMeta(
         name_at_source="doorstep",
         measure_name="greenspace only",
         description="Households that are within 200 meters of more than 0.5 hectares of greenspace",
-        caveats=(
+        rationalle=(
             "0.5 hectares as a perfect square would have sides 70 meters in length, and be slightly smaller than a football pitch. "
             "The 'Swan Center Urban Regeneration project' will be approximately 0.8 hectares and would be an example of greenspace in development considering doorstep access.  "
         ),
@@ -68,7 +77,7 @@ METADATA: tuple[Metadata, ...] = (
     AccessToNatureMeta(
         name_at_source="neighbourhood",
         measure_name="greenspace only",
-        description="Households that are within 1 kilometer of more than 10 minutes walkable greenspace",
+        description="Households that are within 1 kilometer of more than 10 hectares or 550m walkable greenspace",
         rationalle=(
             "550m in a straight line would highlight walking trails that might be excluded when measuring area. "
             "10 hectares as a perfect square would have sides 316 meters in length. "
@@ -78,11 +87,53 @@ METADATA: tuple[Metadata, ...] = (
     AccessToNatureMeta(
         name_at_source="neighbourhood",
         measure_name="greenspace and bluespace",
-        description="Households that are within 1 kilometer of more than 10 minutes walkable greenspace or bluespace",
+        description="Households that are within 1 kilometer of more than 10 hectares or 550m walkable greenspace or bluespace",
         rationalle=(
             "550m in a straight line would highlight walking trails that might be excluded when measuring area. "
             "10 hectares as a perfect square would have sides 316 meters in length. "
             "The the Lower Earlswood Lake Circular trail is about 800m and would be an example of the kind of bluespace included in surrey."
+        ),
+    ),
+    AccessToWoodlandMeta(
+        name_at_source="Scenario1",
+        indicator_name="local small",
+        measure_name="woodland",
+        description="Households that are within 500 meters of more than 0.5 hectares woodland",
+        rationalle=(
+            "0.5 hectares as a perfect square would have sides 70 meters in length, and be slightly smaller than a football pitch. "
+            "Areas of woodland this size are often privately owned and used for amenities, conservation or firewood. "
+            "They may also be used as natural protection from noise polution on busy roadsides. "
+        ),
+    ),
+    AccessToWoodlandMeta(
+        name_at_source="Scenario2",
+        indicator_name="local medium",
+        measure_name="woodland",
+        description="Households that are within 500 meters of more than 2 hectares woodland",
+        rationalle=(
+            "2 hectares as a perfect square would have sides 141 meters in length, you could expect to walk through woodlands meeting this criteria for 2-10 minutes"
+            "Westborough wood in Guildford is 5.08 hectares and an example of urban woodland that would fit this criteria. "
+        ),
+    ),
+    AccessToWoodlandMeta(
+        name_at_source="Scenario3",
+        indicator_name="neighbourhood",
+        measure_name="woodland",
+        description="Households that are within 1km walk of more than 2 hectares woodland",
+        rationalle=(
+            "2 hectares as a perfect square would have sides 141 meters in length, you could expect to walk through woodlands meeting this criteria for 2-10 minutes"
+            "Westborough wood in Guildford is 5.08 hectares and an example of urban woodland that would fit this criteria. "
+        ),
+    ),
+    AccessToWoodlandMeta(
+        name_at_source="Scenario4",
+        indicator_name="community",
+        measure_name="woodland",
+        description="Households that are within 4 kilometers of more than 10 hectares woodland",
+        rationalle=(
+            "10 hectares as a perfect square would have sides 316 meters in length and would facilitate walks of longer than 10 minutes. "
+            "Barley Mow Wood is 10.4 hectares representing the smallest woodland in surrey that would fit this criteria. "
+            "Box Hill National Trust site is a larger well known site of 291.53 hectares."
         ),
     ),
 )
@@ -106,14 +157,31 @@ def unpivot_numerators(df: pl.DataFrame, measure_name: str) -> pl.DataFrame:
     the urban/rural flag is retained in case it simplifies any downstream analysis."""
     return df.unpivot(
         on=cs.starts_with("uprn_in") & ~cs.contains("_and_"),
-        index=cs.ends_with("CD") | cs.by_name("total_uprn", "urban_rural_flag"),
-        value_name="numerator",
-        variable_name="indicator",
-    ).with_columns(
+        index=["total_uprn", "OA21CD", "LSOA21CD"],
+    ).select(
+        "OA21CD",
+        "LSOA21CD",
         denominator="total_uprn",
-        indicator=pl.col("indicator").str.strip_prefix("uprn_in_"),
+        numerator="value",
+        indicator=pl.col("variable").str.strip_prefix("uprn_in_"),
         measure=pl.lit(measure_name),
-        value=percent_calc(pl.col("numerator"), pl.col("total_uprn")),
+        value=percent_calc(pl.col("value"), pl.col("total_uprn")),
+    )
+
+
+def select_numerators(
+    df: pl.DataFrame, measure_name: str, indicator_name: str
+) -> pl.DataFrame:
+    return df.select(
+        OA21CD="OA21",
+        LSOA21CD="LSOA21",
+        denominator="Household count",
+        numerator="Household with access count",
+        indicator=pl.lit(indicator_name),
+        measure=pl.lit(measure_name),
+        value=percent_calc(
+            pl.col("Household with access count"), pl.col("Household count")
+        ),
     )
 
 
@@ -148,11 +216,25 @@ def get_unpivoted_indicators() -> pl.DataFrame:
     # by default these are included in the greenspace only data and we just use them once for simplicity
     green_blue_df = green_blue_df_full.select(~cs.contains("local", "doorstep"))
 
+    # Forestry data
+    with fsspec.open(
+        "https://cdn.forestresearch.gov.uk/Access_to_Woodland_in_England_2025.ods"
+    ) as file:
+        forestry_reader = fastexcel.read_excel(file.read())
+    scenario1 = forestry_reader.load_sheet("Scenario1", header_row=5).to_polars()
+    scenario2 = forestry_reader.load_sheet("Scenario2", header_row=5).to_polars()
+    scenario3 = forestry_reader.load_sheet("Scenario3", header_row=5).to_polars()
+    scenario4 = forestry_reader.load_sheet("Scenario4", header_row=5).to_polars()
+
     long_df = pl.concat(
         [
             unpivot_numerators(green_blue_df, "greenspace and bluespace"),
             unpivot_numerators(green_df, "greenspace only"),
             unpivot_numerators(blue_df, "bluespace only"),
+            select_numerators(scenario1, "woodland", "local small"),
+            select_numerators(scenario2, "woodland", "local medium"),
+            select_numerators(scenario3, "woodland", "neighbourhood"),
+            select_numerators(scenario4, "woodland", "community"),
         ]
     )
     return long_df
@@ -166,7 +248,9 @@ def get_metadata(metadata: tuple[Metadata, ...] = METADATA) -> pl.DataFrame:
     # The get_unpivoted_indicators functon is cached in memory to prevent it from running twice
     # see functols.cache
     long_df = get_unpivoted_indicators()
-    surrey_df = long_df.filter(pl.col("LAD25CD").is_in(SURREY_DISTRICTS))
+    surrey_df = long_df.filter(
+        pl.col("LSOA21CD").is_in(read_gdb(layer="lsoa")["lsoa21_code"])
+    )
 
     england_val = long_df.group_by(
         indicator_name="indicator", measure_name="measure"
@@ -208,7 +292,9 @@ def group_surrey_data(area_code: Literal["LAD25CD", "LSOA21CD"]):
     ).cast(pl.Int32)
     return (
         get_unpivoted_indicators()
-        .with_columns(is_surrey=pl.col("LAD25CD").is_in(SURREY_DISTRICTS))
+        .with_columns(
+            is_surrey=pl.col("LSOA21CD").is_in(read_gdb(layer="lsoa")["lsoa21_code"])
+        )
         .group_by("indicator", "measure", area_code)
         .agg(
             pl.all("is_surrey"),
@@ -235,18 +321,6 @@ def get_access_to_nature_lsoa(
     return pl.read_csv(cache)
 
 
-def get_access_to_nature_district(
-    cache: Path | None = OUTPUT_DIR / "access_to_nature_district.csv",
-) -> pl.DataFrame:
-    """utility function returns the data. If the data exists locally, this is used.
-
-    to overwrite data use the refresh_data function"""
-    if cache is None or not cache.exists():
-        logger.info("Downloading Data for access to nature...")
-        return group_surrey_data("LAD25CD")
-    return pl.read_csv(cache)
-
-
 def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
     """ETL entry point. Will always overwrite data"""
     meta_dir = output_dir / "metadata"
@@ -254,16 +328,13 @@ def refresh_data(output_dir: Path = OUTPUT_DIR) -> None:
         logger.info(f"Creating local store for data at: {output_dir}...")
         meta_dir.mkdir(parents=True)
 
-    # surrey_district_df = get_access_to_nature_district(cache=None)
     surrey_lsoa_df = get_access_to_nature_lsoa(cache=None)
     meta_df = get_metadata()
-    # logger.info(f"Writing data to: '{output_dir / 'access_to_nature_district.csv'}'")
-    # surrey_district_df.write_csv(output_dir / "access_to_nature_district.csv")
     logger.info(f"Writing data to: '{output_dir / 'access_to_nature_lsoa.csv'}'")
     surrey_lsoa_df.write_csv(output_dir / "access_to_nature_lsoa.csv")
     logger.info(f"Writing metadata to: '{meta_dir / 'access_to_nature.csv'}'")
     meta_df.write_csv(meta_dir / "access_to_nature.csv")
-    logger.success("Data has been refreshed for 'access_to_nature_{district/lsoa}.csv'")
+    logger.success("Data has been refreshed for 'access_to_nature_lsoa.csv'")
 
 
 if __name__ == "__main__":

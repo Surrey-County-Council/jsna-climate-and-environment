@@ -37,9 +37,6 @@ if not MODULE_DIR.exists():
 
 logger.info(f"ROOT_DIR: {ROOT_DIR}")
 
-# make a home for all data inputs associated with the project
-DATA_DIR = get_env_path("DATA_DIR", ROOT_DIR / "data" / "input")
-
 # make a home for all data outputs associated with the project
 OUTPUT_DIR = get_env_path("OUTPUT_PATH", ROOT_DIR / "data" / "output")
 OUTPUT_DIR.mkdir(exist_ok=True, parents=True)

@@ -90,7 +90,7 @@ Storage: Local gdb and csv files
     git clone https://github.com/Surrey-County-Council/jsna-climate-and-environment.git
     pip install uv
     uv sync
-    uv run main
+    uv run refresh_all_data
     ```
 3. Environment Variables
    the only supported environment variable is OUTPUT_DIR. setting this lets you save the data somewhere specific. If unset data will be saved in the project directory.
@@ -112,6 +112,10 @@ Storage: Local gdb and csv files
 4. Running the Pipeline
 
     it is reccommended to run the pipeline with uv
+
+    ```bash
+    uv run refresh_all_data
+    ```
 
     the project setup sepperates each transformation into a module. In each module a a function named get_data which accepts an output path and a parameter for overwriting cached data. If overwrite is true, all the data is re-run, otherwise the transformation only runs for data that has not been processed. This is important to note if you are making code changes, you should ensure you overwrite the data.
 

@@ -95,8 +95,8 @@ def get_nspl(
 # census boundaries change less frequently but are versioned
 def get_surrey_lsoas(
     dataset: Literal[
-        "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10"
-    ] = "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BFC_V10",
+        "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BGC_V10"
+    ] = "Lower_layer_Super_Output_Areas_December_2021_Boundaries_EW_BGC_V10",
 ) -> gpd.GeoDataFrame:
     mapping = get_nspl()
 
